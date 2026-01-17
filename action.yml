@@ -15,6 +15,7 @@ runs:
   using: "composite"
   steps:
     # --- LINUX CONFIGURATION ---
+    # Linux still needs CIBW_BEFORE_ALL because it builds inside a Docker container
     - name: Configure Linux Build
       if: runner.os == 'Linux'
       shell: bash
@@ -30,25 +31,25 @@ runs:
         echo "EOF" >> $GITHUB_ENV
 
     # --- WINDOWS CONFIGURATION ---
-    - name: Configure Windows Build
+    # Install directly on Host (Runner), NOT inside cibuildwheel
+    - name: Install Nim (Windows)
       if: runner.os == 'Windows'
       shell: bash
       run: |
-        echo "CIBW_BEFORE_ALL_WINDOWS=choco install nim --version ${{ inputs.nim-version }} -y" >> $GITHUB_ENV
-        # Add Nim binary to the system PATH for subsequent steps
+        choco install nim --version ${{ inputs.nim-version }} -y
+        # Add to GITHUB_PATH so it persists for the next step (cibuildwheel)
         echo "C:\tools\Nim\nim-${{ inputs.nim-version }}\bin" >> $GITHUB_PATH
 
     # --- MACOS CONFIGURATION ---
-    - name: Configure macOS Build
+    # Install directly on Host (Runner), NOT inside cibuildwheel
+    - name: Install Nim (macOS)
       if: runner.os == 'macOS'
       shell: bash
       run: |
-        echo "CIBW_BEFORE_ALL_MACOS<<EOF" >> $GITHUB_ENV
-        echo "curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh" >> $GITHUB_ENV
-        echo "sh init.sh -y" >> $GITHUB_ENV
-        echo "export PATH=\$HOME/.nimble/bin:\$PATH" >> $GITHUB_ENV
-        echo "choosenim ${{ inputs.nim-version }}" >> $GITHUB_ENV
-        echo "EOF" >> $GITHUB_ENV
+        curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh
+        sh init.sh -y
+        # Add to GITHUB_PATH so it persists for the next step (cibuildwheel)
+        echo "$HOME/.nimble/bin" >> $GITHUB_PATH
 
     # --- BUILD EXECUTION ---
     - name: Build Wheels
