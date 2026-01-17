@@ -1,0 +1,61 @@
+name: 'Nuwa Build Wheels'
+description: 'Builds Python wheels for Nuwa/Nim projects using cibuildwheel'
+author: 'Martin Eastwood'
+inputs:
+  nim-version:
+    description: 'Nim version to use'
+    required: false
+    default: '2.0.0'
+  cibw-version:
+    description: 'Version of cibuildwheel to use'
+    required: false
+    default: '2.22.0'
+
+runs:
+  using: "composite"
+  steps:
+    # --- LINUX CONFIGURATION ---
+    # Injects the installation script into the CIBW_BEFORE_ALL_LINUX environment variable.
+    # This ensures it runs INSIDE the manylinux Docker container.
+    - name: Configure Linux Build
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        echo "CIBW_BEFORE_ALL_LINUX<<EOF" >> $GITHUB_ENV
+        echo "yum install -y xz curl gcc" >> $GITHUB_ENV
+        echo "curl -L https://nim-lang.org/download/nim-${{ inputs.nim-version }}-linux_x64.tar.xz -o nim.tar.xz" >> $GITHUB_ENV
+        echo "tar -xf nim.tar.xz" >> $GITHUB_ENV
+        echo "mv nim-${{ inputs.nim-version }} /opt/nim" >> $GITHUB_ENV
+        echo "ln -s /opt/nim/bin/nim /usr/bin/nim" >> $GITHUB_ENV
+        echo "ln -s /opt/nim/bin/nimble /usr/bin/nimble" >> $GITHUB_ENV
+        echo "rm nim.tar.xz" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
+    # --- WINDOWS CONFIGURATION ---
+    # Installs via Chocolatey and injects the PATH variable so the build process finds it.
+    - name: Configure Windows Build
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        echo "CIBW_BEFORE_ALL_WINDOWS=choco install nim --version ${{ inputs.nim-version }} -y" >> $GITHUB_ENV
+        # Important: Escape backslashes for the YAML string processing
+        echo "CIBW_ENVIRONMENT_WINDOWS=PATH=\$PATH;C:\\tools\\Nim\\nim-${{ inputs.nim-version }}\\bin" >> $GITHUB_ENV
+
+    # --- MACOS CONFIGURATION ---
+    # Uses choosenim to allow precise version pinning (Homebrew often forces latest).
+    - name: Configure macOS Build
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        echo "CIBW_BEFORE_ALL_MACOS<<EOF" >> $GITHUB_ENV
+        echo "curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh" >> $GITHUB_ENV
+        echo "sh init.sh -y" >> $GITHUB_ENV
+        echo "export PATH=\$HOME/.nimble/bin:\$PATH" >> $GITHUB_ENV
+        echo "choosenim ${{ inputs.nim-version }}" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
+    # --- BUILD EXECUTION ---
+    # Uses pipx to run cibuildwheel in an isolated environment
+    - name: Build Wheels
+      shell: bash
+      run: pipx run cibuildwheel==${{ inputs.cibw-version }}
