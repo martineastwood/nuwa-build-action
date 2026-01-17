@@ -15,8 +15,6 @@ runs:
   using: "composite"
   steps:
     # --- LINUX CONFIGURATION ---
-    # Injects the installation script into the CIBW_BEFORE_ALL_LINUX environment variable.
-    # This ensures it runs INSIDE the manylinux Docker container.
     - name: Configure Linux Build
       if: runner.os == 'Linux'
       shell: bash
@@ -32,17 +30,15 @@ runs:
         echo "EOF" >> $GITHUB_ENV
 
     # --- WINDOWS CONFIGURATION ---
-    # Installs via Chocolatey and injects the PATH variable so the build process finds it.
     - name: Configure Windows Build
       if: runner.os == 'Windows'
       shell: bash
       run: |
         echo "CIBW_BEFORE_ALL_WINDOWS=choco install nim --version ${{ inputs.nim-version }} -y" >> $GITHUB_ENV
-        # Important: Escape backslashes for the YAML string processing
-        echo "CIBW_ENVIRONMENT_WINDOWS=PATH=\$PATH;C:\\tools\\Nim\\nim-${{ inputs.nim-version }}\\bin" >> $GITHUB_ENV
+        # Add Nim binary to the system PATH for subsequent steps
+        echo "C:\tools\Nim\nim-${{ inputs.nim-version }}\bin" >> $GITHUB_PATH
 
     # --- MACOS CONFIGURATION ---
-    # Uses choosenim to allow precise version pinning (Homebrew often forces latest).
     - name: Configure macOS Build
       if: runner.os == 'macOS'
       shell: bash
@@ -55,7 +51,6 @@ runs:
         echo "EOF" >> $GITHUB_ENV
 
     # --- BUILD EXECUTION ---
-    # Uses pipx to run cibuildwheel in an isolated environment
     - name: Build Wheels
       shell: bash
       run: pipx run cibuildwheel==${{ inputs.cibw-version }}
