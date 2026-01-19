@@ -1,15 +1,15 @@
-name: 'Nuwa Build Wheels'
-description: 'Builds Python wheels for Nuwa/Nim projects using cibuildwheel'
-author: 'Martin Eastwood'
+name: "Nuwa Build Wheels"
+description: "Builds Python wheels for Nuwa/Nim projects using cibuildwheel"
+author: "Martin Eastwood"
 inputs:
   nim-version:
-    description: 'Nim version to use'
+    description: "Nim version to use"
     required: false
-    default: '2.0.0'
+    default: "2.2.0"
   cibw-version:
-    description: 'Version of cibuildwheel to use'
+    description: "Version of cibuildwheel to use"
     required: false
-    default: '2.22.0'
+    default: "2.22.0"
 
 runs:
   using: "composite"
